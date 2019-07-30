@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
 # If modifying these scopes, delete the file token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
 
 def main():
     """Shows basic usage of the Gmail API.
@@ -35,9 +35,27 @@ def main():
 
     # Call the Gmail API
     # results = service.users().labels().list(userId='me').execute()
-    response = service.users().messages().list(userId='me', q='in:inbox category:primary is:unread').execute()
-    for msg in response['messages']:
-        print(msg)
+    total_num_unread = 0
+    page_num = 1
+    response = service.users().messages().list(userId='me', q='in:inbox is:unread').execute()
+    to_trash_ids = []
+    while 'nextPageToken' in response:
+        print(f'page number: {page_num}')
+        messages = response['messages']
+        to_trash_ids.extend(msg['id'] for msg in messages)
+        # total_num_unread += len(response['messages'])
+        next_page_token = response['nextPageToken']
+        response = service.users().messages().list(userId='me', q='in:inbox is:unread', pageToken=next_page_token).execute()
+        page_num += 1
+    print(f'num ids collected: {len(to_trash_ids)}')
+    for msg_id in to_trash_ids:
+        service.users().messages().trash(userId='me', id=msg_id).execute()
+        print(f'trashed {msg_id}')
+
+    # print(f'num unread: {total_num_unread}')
+
+    #for msg in response['messages']:
+        #print(msg)
 #    labels = results.get('labels', [])
 #
 #    if not labels:
